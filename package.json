@@ -1,0 +1,21 @@
+{
+  "name": "opshub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "OpsHub - one modular hub that runs many different operations sites from one codebase (Electrolyte hackathon, PS 03)",
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix client install",
+    "db:migrate": "npm --prefix server run migrate",
+    "db:seed": "npm --prefix server run seed",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server run start",
+    "start:offline": "npm --prefix server run start:offline",
+    "test": "npm --prefix server test",
+    "backup": "npm --prefix server run backup",
+    "restore": "npm --prefix server run restore",
+    "db:create": "npm --prefix server run db:create"
+  }
+}
