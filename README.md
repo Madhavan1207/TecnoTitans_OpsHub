@@ -23,9 +23,9 @@ Requirements: **Node 22 LTS** (https://nodejs.org) and, for the full setup, **Po
 
 **Fastest path (no PostgreSQL at all):**
 ```powershell
-npm run setup
+npm run setup            # installs root (Husky git hooks), server, and client dependencies
 npm run build
-npm run start:offline        # http://localhost:4000 - seeded demo data, in-process PostgreSQL
+npm run start:offline    # http://localhost:4000 - seeded demo data, in-process PostgreSQL
 ```
 
 **Full path with PostgreSQL:**
@@ -136,6 +136,33 @@ Public (no login): the intake form at `/s/service-centre/submit` and the public 
 npm test                  # 45 tests, ~40 s. Creates and resets the "opshub_test" database using .env.test
                           # (needs PostgreSQL running; default password "postgres" - edit server/.env.test otherwise)
 ```
+
+## Commit standards (Conventional Commits)
+
+This repository enforces the [Conventional Commits](https://www.conventionalcommits.org/) specification on all git commits using **Husky** and **Commitlint**. Non-conforming commit messages are automatically rejected by the `commit-msg` hook.
+
+### Format
+```text
+<type>(<optional scope>): <description>
+```
+
+### Common types
+- `feat:` A new user-facing feature (e.g. `feat(builder): add multi-node drag selection`)
+- `fix:` A bug fix (e.g. `fix(builder): prevent node teleport on mouse release`)
+- `refactor:` Code restructuring without behavioral changes (e.g. `refactor(db): streamline query helper`)
+- `perf:` Performance improvements (e.g. `perf(renderer): optimize memoized canvas nodes`)
+- `docs:` Documentation updates only (e.g. `docs: add commit standards to README`)
+- `test:` Adding or updating tests (e.g. `test(auth): add login rate limiter test`)
+- `chore:` Dependency bumps, tooling, or build configuration (e.g. `chore: configure husky and commitlint`)
+
+### Example
+```bash
+git commit -m "fix(switcher): prevent dropdown from overflowing screen bottom"
+```
+*(If a message does not follow this format, e.g. `git commit -m "updated stuff"`, Git will reject the commit).*
+
+### Team setup
+When teammates clone this repository and run `npm run setup` (or `npm install`), the `"prepare": "husky"` script runs automatically. It installs `@commitlint/cli`, `@commitlint/config-conventional`, and sets up the Git hooks in their local `.git/hooks` directory. No manual hook configuration is needed.
 
 ## Project layout
 

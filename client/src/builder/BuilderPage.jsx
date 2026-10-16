@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, MarkerType, useReactFlow } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, MarkerType, useReactFlow, useNodesState, useEdgesState } from '@xyflow/react';
 import { MODULES, MODULE_MAP, GROUPS, PORT_TYPES } from '@shared/registry.js';
 import { addModule, removeModule, canAddModule, connect, isValidConnection, validateConfig, edgeId, normalizeConfig } from '@shared/validate.js';
 import { PRESETS, applyPreset } from '@shared/presets.js';
@@ -33,7 +33,14 @@ function Canvas({ slug, init, status, refreshStatus }) {
   const latest = useRef(config);
 
   const validation = useMemo(() => validateConfig(config), [config]);
-  const setConfig = useCallback((c) => { latest.current = c; setConfigRaw(c); setSave('dirty'); }, []);
+  const setConfig = useCallback((updater) => {
+    setConfigRaw((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      latest.current = next;
+      return next;
+    });
+    setSave('dirty');
+  }, []);
 
   // autosave: configuration persists without a manual step
   const flush = useCallback(async () => {
@@ -46,19 +53,57 @@ function Canvas({ slug, init, status, refreshStatus }) {
 
   const issuesBy = useMemo(() => { const m = {}; validation.errors.forEach((e) => { if (e.module) (m[e.module] ||= []).push(e); }); return m; }, [validation]);
 
-  const nodes = useMemo(() => config.modules.map((m) => ({
-    id: m.type, type: 'module', position: m.position, data: { type: m.type, edges: config.edges, issues: issuesBy[m.type] }, selected: selected?.kind === 'node' && selected.id === m.type, draggable: true, deletable: false,
-  })), [config.modules, config.edges, issuesBy, selected]);
-  const edges = useMemo(() => config.edges.map((e) => ({
-    id: e.id, source: e.source, target: e.target, targetHandle: e.targetHandle, sourceHandle: 'out', animated: true, selected: selected?.kind === 'edge' && selected.id === e.id,
-    style: { stroke: PORT_TYPES[MODULE_MAP[e.source].output.type].color, strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: PORT_TYPES[MODULE_MAP[e.source].output.type].color },
-  })), [config.edges, selected]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  useEffect(() => {
+    setNodes((prevNodes) => {
+      const prevMap = new Map(prevNodes.map((n) => [n.id, n]));
+      return config.modules.map((m) => {
+        const prev = prevMap.get(m.type);
+        const isDragging = prev?.dragging;
+        const position = isDragging && prev?.position ? prev.position : m.position;
+        return {
+          id: m.type,
+          type: 'module',
+          position,
+          data: { type: m.type, edges: config.edges, issues: issuesBy[m.type] },
+          selected: selected?.kind === 'node' && selected.id === m.type,
+          draggable: true,
+          deletable: false,
+        };
+      });
+    });
+  }, [config.modules, config.edges, issuesBy, selected, setNodes]);
+
+  useEffect(() => {
+    setEdges(config.edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      targetHandle: e.targetHandle,
+      sourceHandle: 'out',
+      animated: true,
+      selected: selected?.kind === 'edge' && selected.id === e.id,
+      style: { stroke: PORT_TYPES[MODULE_MAP[e.source]?.output?.type]?.color || '#888', strokeWidth: 2.5 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: PORT_TYPES[MODULE_MAP[e.source]?.output?.type]?.color || '#888' },
+    })));
+  }, [config.edges, selected, setEdges]);
+
+  const onNodeDragStop = useCallback((_, n) => {
+    if (!n?.position) return;
+    const newPos = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+    setConfig((prev) => ({
+      ...prev,
+      modules: prev.modules.map((m) => (m.type === n.id ? { ...m, position: newPos } : m)),
+    }));
+  }, [setConfig]);
 
   const apply = (res, okMsg) => { if (res.error) { toast.bad(res.error); return false; } setConfig(res.config); if (okMsg) toast.ok(okMsg); return true; };
   const add = (key, position) => { const ok = apply(addModule(config, key, position)); if (ok) { setSelected({ kind: 'node', id: key }); setTab('module'); } };
   const remove = (key) => { if (apply(removeModule(config, key))) setSelected(null); };
 
-  const onDrop = (e) => { e.preventDefault(); const key = e.dataTransfer.getData('application/opshub-module'); if (!key) return; add(key, rf.screenToFlowPosition({ x: e.clientX - 100, y: e.clientY - 20 })); };
+  const onDrop = (e) => { e.preventDefault(); const key = e.dataTransfer.getData('application/opshub-module'); if (!key) return; const pos = rf.screenToFlowPosition({ x: e.clientX - 116, y: e.clientY - 26 }); add(key, { x: Math.round(pos.x), y: Math.round(pos.y) }); };
   const onConnect = (c) => apply(connect(config, { source: c.source, target: c.target, targetHandle: c.targetHandle }));
   const onConnectEnd = (_e, st) => { if (st?.fromNode && st?.toNode && !st.isValid) { const r = isValidConnection(config, { source: st.fromNode.id, target: st.toNode.id, targetHandle: st.toHandle?.id || MODULE_MAP[st.toNode.id].inputs[0]?.id }); if (!r.ok) toast.bad(r.reason); } };
   const checkConn = (c) => isValidConnection(config, { source: c.source, target: c.target, targetHandle: c.targetHandle }).ok;
@@ -124,10 +169,26 @@ function Canvas({ slug, init, status, refreshStatus }) {
           </aside>}
 
           <div className="flex-1 min-w-0 relative" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={onDrop}>
-            <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.1, maxZoom: 0.85 }} minZoom={0.3} maxZoom={1.4} deleteKeyCode={null}
-              onNodeClick={(_, n) => { setSelected({ kind: 'node', id: n.id }); setTab('module'); }} onEdgeClick={(_, e) => setSelected({ kind: 'edge', id: e.id })} onPaneClick={() => { setSelected(null); setTab('site'); }}
-              onNodeDragStop={(_, n) => setConfig({ ...config, modules: config.modules.map((m) => (m.type === n.id ? { ...m, position: n.position } : m)) })}
-              onConnect={onConnect} onConnectEnd={onConnectEnd} isValidConnection={checkConn} proOptions={{ hideAttribution: true }}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.1, maxZoom: 0.85 }}
+              minZoom={0.3}
+              maxZoom={1.4}
+              deleteKeyCode={null}
+              onNodeClick={(_, n) => { setSelected({ kind: 'node', id: n.id }); setTab('module'); }}
+              onEdgeClick={(_, e) => setSelected({ kind: 'edge', id: e.id })}
+              onPaneClick={() => { setSelected(null); setTab('site'); }}
+              onNodeDragStop={onNodeDragStop}
+              onConnect={onConnect}
+              onConnectEnd={onConnectEnd}
+              isValidConnection={checkConn}
+              proOptions={{ hideAttribution: true }}
+            >
               <Background gap={24} size={1.5} color="#C9C3AE" /><Controls showInteractive={false} /><MiniMap pannable zoomable nodeColor={(n) => MODULE_MAP[n.id]?.color || '#999'} style={{ border: '2px solid #0D1621' }} />
             </ReactFlow>
             {showIssues && (

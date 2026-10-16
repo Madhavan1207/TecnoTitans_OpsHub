@@ -5,7 +5,7 @@
   "type": "module",
   "description": "OpsHub - one modular hub that runs many different operations sites from one codebase (Electrolyte hackathon, PS 03)",
   "scripts": {
-    "setup": "npm --prefix server install && npm --prefix client install",
+    "setup": "npm install && npm --prefix server install && npm --prefix client install",
     "db:migrate": "npm --prefix server run migrate",
     "db:seed": "npm --prefix server run seed",
     "dev:server": "npm --prefix server run dev",
@@ -16,6 +16,12 @@
     "test": "npm --prefix server test",
     "backup": "npm --prefix server run backup",
     "restore": "npm --prefix server run restore",
-    "db:create": "npm --prefix server run db:create"
+    "db:create": "npm --prefix server run db:create",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "husky": "^9.1.7"
   }
 }
