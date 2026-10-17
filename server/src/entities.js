@@ -3,6 +3,7 @@
 // There is NO per-site hand-coding: change the field config, publish, and the API behaves differently.
 import { computeRecord } from '../../shared/formula.js';
 import { resolveFields, EXPORTABLE } from '../../shared/registry.js';
+import { phoneSchema, emailSchema } from '../../shared/validation.js';
 import { HttpError } from './core.js';
 
 export const ENTITIES = {
@@ -22,7 +23,10 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
 
 function coerce(f, v) {
   if (v === null || v === '' || v === undefined) return { value: null };
-  switch (f.type) {
+  const type = (f.key.toLowerCase().includes('phone') && (f.type === 'text' || f.type === 'phone')) ? 'phone'
+    : (f.key.toLowerCase().includes('email') && (f.type === 'text' || f.type === 'email')) ? 'email'
+    : f.type;
+  switch (type) {
     case 'number':
     case 'currency': {
       const n = typeof v === 'number' ? v : Number(String(v).replace(/,/g, ''));
@@ -48,14 +52,16 @@ function coerce(f, v) {
     }
     case 'phone': {
       const raw = String(v).trim();
-      const digits = raw.replace(/[^\d]/g, '');
-      if (!/^\+?[\d\s\-().]{7,22}$/.test(raw) || digits.length < 10 || digits.length > 15) return { error: `${f.label} must be a valid mobile number (10 digits, or with country code)` };
+      const parsed = phoneSchema(f.label, !!f.required).safeParse(raw);
+      if (!parsed.success) return { error: parsed.error.issues[0].message };
+      const digits = raw.replace(/\D/g, '');
       return { value: (raw.startsWith('+') ? '+' : '') + digits };
     }
     case 'email': {
       const s = String(v).trim();
       if (!s) return { value: null };
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return { error: `${f.label} must be a valid email address` };
+      const parsed = emailSchema(f.label, !!f.required).safeParse(s);
+      if (!parsed.success) return { error: parsed.error.issues[0].message };
       return { value: s.toLowerCase() };
     }
     case 'ref': {

@@ -1,9 +1,12 @@
 // Config-driven form + table columns. NOTHING here knows about a specific site: it renders whatever
 // field list the site config provides (core fields, custom fields, calculated fields).
 import { computeRecord } from '@shared/formula.js';
+import { validateWithZod, phoneSchema, emailSchema } from '@shared/validation.js';
 import { Calculator, Lock } from '../lib/icons.jsx';
 import { dt, human, money, num } from '../lib/format.js';
 import { StatusChip } from './ui.jsx';
+
+export { validateWithZod, phoneSchema, emailSchema };
 
 export function initialValues(fields, base = {}) {
   const v = {};
@@ -42,8 +45,24 @@ function Input({ f, value, onChange, error, options }) {
     <label className="flex items-center gap-2 text-sm font-medium py-2"><input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} style={{ accentColor: 'var(--primary)', width: 18, height: 18 }} /> Yes</label>
   );
   if (f.type === 'number' || f.type === 'currency') return <input {...common} type="number" inputMode="decimal" step="any" min={f.min} max={f.max} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} />;
-  if (f.type === 'phone') return <input {...common} type="tel" inputMode="tel" autoComplete="tel" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder || 'e.g. 98200 12345'} />;
-  if (f.type === 'email') return <input {...common} type="email" inputMode="email" autoComplete="email" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder || 'customer@example.com'} />;
+  const isPhone = f.type === 'phone' || f.key.toLowerCase().includes('phone');
+  const isEmail = f.type === 'email' || f.key.toLowerCase().includes('email');
+  if (isPhone) return (
+    <input
+      {...common}
+      type="tel"
+      inputMode="numeric"
+      autoComplete="tel"
+      maxLength={10}
+      value={value ?? ''}
+      onChange={(e) => {
+        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+        onChange(digits);
+      }}
+      placeholder={f.placeholder || '10-digit mobile number'}
+    />
+  );
+  if (isEmail) return <input {...common} type="email" inputMode="email" autoComplete="email" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder || 'customer@example.com'} />;
   if (f.type === 'date') return <input {...common} type="date" value={value ? String(value).slice(0, 10) : ''} onChange={(e) => onChange(e.target.value)} />;
   return <input {...common} type="text" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} />;
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { http, errMsg } from '../lib/api.js';
 import { themeVars } from '../lib/theme.js';
-import { DynamicForm, buildPayload, initialValues, serverErrors } from '../components/DynamicForm.jsx';
+import { DynamicForm, buildPayload, initialValues, serverErrors, validateWithZod } from '../components/DynamicForm.jsx';
 import { Logo, Spinner, useAsync, Empty } from '../components/ui.jsx';
 import { CheckCircle2 } from '../lib/icons.jsx';
 
@@ -19,7 +19,23 @@ export default function PublicSubmit() {
   if (meta.error || form.error) return <div className="min-h-screen grid place-items-center"><Empty title="Not available" hint="This site does not accept public requests." /></div>;
   const fields = form.data.fields;
   const value = v || initialValues(fields);
-  const submit = async () => { setErrs({}); setMsg(''); try { const { data } = await http.post(`/${slug}/public/requests`, buildPayload(fields, value)); setDone(data); } catch (e) { setErrs(serverErrors(e)); setMsg(errMsg(e)); } };
+  const submit = async () => {
+    setErrs({});
+    setMsg('');
+    const check = validateWithZod(fields, value);
+    if (!check.valid) {
+      setErrs(check.errors);
+      setMsg(Object.values(check.errors)[0]);
+      return;
+    }
+    try {
+      const { data } = await http.post(`/${slug}/public/requests`, buildPayload(fields, value));
+      setDone(data);
+    } catch (e) {
+      setErrs(serverErrors(e));
+      setMsg(errMsg(e));
+    }
+  };
   return (
     <div className="themed min-h-screen py-10 px-4" style={themeVars(meta.data.theme)}>
       <div className="max-w-xl mx-auto">

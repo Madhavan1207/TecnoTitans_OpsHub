@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSite } from '../SiteContext.jsx';
 import { DataTable, Drawer, Empty, ErrorBox, Modal, PageHeader, Spinner, StatusChip, Tabs, useAsync, Chip } from '../../components/ui.jsx';
-import { DynamicForm, buildPayload, fieldColumns, initialValues, serverErrors } from '../../components/DynamicForm.jsx';
+import { DynamicForm, buildPayload, fieldColumns, initialValues, serverErrors, validateWithZod } from '../../components/DynamicForm.jsx';
 import { Plus, CheckCircle2, XCircle, Clock, MessageSquare, Send, RotateCcw } from '../../lib/icons.jsx';
 import { toast } from '../../lib/store.js';
 import { errMsg } from '../../lib/api.js';
@@ -45,8 +45,24 @@ function NewRequest({ fields, options, onClose, onSaved }) {
   const [errs, setErrs] = useState({});
   const [busy, setBusy] = useState(false);
   const save = async () => {
-    setBusy(true); setErrs({});
-    try { const r = await site.api.post('/requests', buildPayload(fields, v)); toast.ok(`Request ${r.label} raised${r.status === 'pending' ? ' - waiting for approval' : ''}`); onSaved(); } catch (e) { setErrs(serverErrors(e)); toast.bad(errMsg(e)); } finally { setBusy(false); }
+    setErrs({});
+    const check = validateWithZod(fields, v);
+    if (!check.valid) {
+      setErrs(check.errors);
+      toast.bad(Object.values(check.errors)[0]);
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await site.api.post('/requests', buildPayload(fields, v));
+      toast.ok(`Request ${r.label} raised${r.status === 'pending' ? ' - waiting for approval' : ''}`);
+      onSaved();
+    } catch (e) {
+      setErrs(serverErrors(e));
+      toast.bad(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <Modal title="New request" onClose={onClose} width={680} footer={<><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? 'Submitting...' : 'Submit request'}</button></>}>

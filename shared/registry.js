@@ -251,7 +251,7 @@ export const IMPORTABLE = { components: 'inventory' };
 /** Fields-bearing module for each resource. */
 export const RESOURCE_FIELDS_MODULE = { ...EXPORTABLE };
 
-export const FIELD_TYPES = ['text', 'textarea', 'number', 'currency', 'date', 'select', 'boolean', 'phone'];
+export const FIELD_TYPES = ['text', 'textarea', 'number', 'currency', 'date', 'select', 'boolean', 'phone', 'email'];
 
 export function deepGet(obj, path) {
   return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);

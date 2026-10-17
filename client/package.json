@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/fraunces": "^5.1.1",
     "@fontsource/jetbrains-mono": "^5.1.1",
     "@fontsource/space-grotesk": "^5.1.1",
     "@fontsource/staatliches": "^5.1.1",
-    "@fontsource/fraunces": "^5.1.1",
     "@xyflow/react": "^12.3.5",
     "axios": "^1.7.9",
     "lucide-react": "^0.462.0",
@@ -20,6 +20,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
     "recharts": "^2.14.1",
+    "zod": "^4.6.7",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
