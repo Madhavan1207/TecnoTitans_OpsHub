@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { http, errMsg } from '../lib/api.js';
 import { themeVars } from '../lib/theme.js';
@@ -6,26 +6,52 @@ import { Logo, Spinner, useAsync, Empty } from '../components/ui.jsx';
 import { CheckCircle2, Circle, Loader2, XCircle, Search, MessageSquare } from '../lib/icons.jsx';
 import { dtm } from '../lib/format.js';
 
-/** Role: Public. The customer sees where their request is. Needs the reference AND the phone number they gave. */
+/** Role: Public. The customer tracks their request by reference number. */
 export default function PublicTrack() {
   const { slug } = useParams();
   const [qs] = useSearchParams();
   const meta = useAsync(() => http.get(`/public/sites/${slug}`).then((r) => r.data), [slug]);
   const [ref, setRef] = useState(qs.get('ref') || '');
-  const [phone, setPhone] = useState('');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const qRef = qs.get('ref');
+    if (qRef && !meta.loading && !meta.error) {
+      setBusy(true);
+      setErr('');
+      http.post(`/${slug}/public/track`, { ref: qRef.trim() })
+        .then((res) => setData(res.data))
+        .catch((e2) => setErr(errMsg(e2)))
+        .finally(() => setBusy(false));
+    }
+  }, [qs, slug, meta.loading, meta.error]);
+
   if (meta.loading) return <Spinner />;
   if (meta.error) return <div className="min-h-screen grid place-items-center"><Empty title="Not available" hint="This site does not offer request tracking." /></div>;
-  const go = async (e) => { e?.preventDefault(); setBusy(true); setErr(''); setData(null); try { setData((await http.post(`/${slug}/public/track`, { ref, phone })).data); } catch (e2) { setErr(errMsg(e2)); } finally { setBusy(false); } };
+
+  const go = async (e) => {
+    e?.preventDefault();
+    if (!ref.trim()) return;
+    setBusy(true);
+    setErr('');
+    setData(null);
+    try {
+      setData((await http.post(`/${slug}/public/track`, { ref: ref.trim() })).data);
+    } catch (e2) {
+      setErr(errMsg(e2));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="themed min-h-screen py-10 px-4" style={themeVars(meta.data.theme)}>
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-6"><div className="font-heading text-4xl">{meta.data.name}</div><div className="text-muted">Track your request</div></div>
         <form onSubmit={go} className="card p-6 flex flex-col gap-4">
           <div><label className="label">Reference number</label><input className="input" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. SC-0012" required /></div>
-          <div><label className="label">Mobile number you gave us</label><input className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" required /></div>
           {err && <div className="err-text">{err}</div>}
           <button className="btn btn-primary !py-3" disabled={busy}>{busy ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />} Check status</button>
         </form>

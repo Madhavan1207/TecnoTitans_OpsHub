@@ -213,23 +213,67 @@ function buildSteps(config, request, job) {
   return list.map((x, i) => ({ ...x, state: i < idx || (i === idx && idx === last) ? 'done' : i === idx ? 'current' : 'todo' }));
 }
 
-/** Public: customer enters reference + the phone number they gave. Both must match, or we reveal nothing. */
+/** Public: customer enters reference number. Allowed to track by reference number alone. */
 publicIntakeRouter.post('/track', rateLimit({ max: 20, name: 'track' }), h(async (req, res) => {
   if (!hasModule(req.config, 'request') || !moduleConfig(req.config, 'request').publicIntake) throw new HttpError(404, 'Tracking is not enabled on this site.', 'module_disabled');
   const cfg = moduleConfig(req.config, 'request');
-  const bad = () => new HttpError(404, 'We could not find a request with that reference and phone number.', 'not_found');
-  const m = String(req.body?.ref || '').trim().match(/^([A-Za-z]+)-?0*(\d+)$/);
-  if (!m || m[1].toUpperCase() !== String(cfg.numberPrefix || 'REQ').toUpperCase() || last10(req.body?.phone).length < 10) throw bad();
+  const bad = () => new HttpError(404, 'We could not find a request with that reference number.', 'not_found');
+  const rawRef = String(req.body?.ref || '').trim();
+  const m = rawRef.match(/^([A-Za-z]+)-?0*(\d+)$/);
+  if (!m) throw bad();
+
+  const prefix = m[1].toUpperCase();
+  const reqPrefix = String(cfg.numberPrefix || 'REQ').toUpperCase();
+  if (prefix !== reqPrefix && prefix !== 'JOB') throw bad();
+
+  const phone = req.body?.phone ? String(req.body.phone).trim() : null;
+
   const found = await withSite(req.site.id, async (t, repo) => {
-    const r = await repo.findOne('requests', { req_no: Number(m[2]) });
-    if (!r || last10(r.data?.[cfg.phoneField]) !== last10(req.body.phone)) throw bad();
-    const job = hasModule(req.config, 'pcb_repair') ? await repo.findOne('repair_jobs', { request_id: r.id }) : null;
-    const msgs = await t.rows("SELECT event, message, created_at FROM notifications WHERE site_id = $1 AND request_id = $2 AND status IN ('sent','queued','sending') ORDER BY id", [req.site.id, r.id]);
+    let r = null;
+    let job = null;
+
+    if (prefix === 'JOB' && hasModule(req.config, 'pcb_repair')) {
+      job = await repo.findOne('repair_jobs', { job_no: Number(m[2]) });
+      if (job?.request_id) r = await repo.get('requests', job.request_id);
+    } else if (prefix === reqPrefix) {
+      r = await repo.findOne('requests', { req_no: Number(m[2]) });
+      if (r && hasModule(req.config, 'pcb_repair')) {
+        job = await repo.findOne('repair_jobs', { request_id: r.id });
+      }
+    }
+
+    if (!r && !job) throw bad();
+    if (!r && job) {
+      return {
+        r: { id: null, req_no: null, title: job.fault || job.device, status: job.status === 'returned' ? 'fulfilled' : 'assigned' },
+        job,
+        msgs: [],
+      };
+    }
+
+    // If phone number is supplied, verify it matches
+    if (phone && last10(phone).length >= 10 && r.data?.[cfg.phoneField]) {
+      if (last10(r.data[cfg.phoneField]) !== last10(phone)) throw bad();
+    }
+
+    let msgs = [];
+    if (r.id) {
+      try {
+        msgs = await t.rows("SELECT event, message, created_at FROM notifications WHERE site_id = $1 AND request_id = $2 AND status IN ('sent','queued','sending') ORDER BY id", [req.site.id, r.id]);
+      } catch {
+        msgs = [];
+      }
+    }
     return { r, job, msgs };
   });
+
   res.json({
-    label: reqLabel(cfg, found.r), title: found.r.title, status: found.r.status, device: found.job?.device || null,
-    steps: buildSteps(req.config, found.r, found.job), messages: found.msgs.map((x) => ({ label: EVENT_LABEL[x.event] || x.event, message: x.message, at: x.created_at })),
+    label: found.r.req_no ? reqLabel(cfg, found.r) : pad('JOB', found.job?.job_no),
+    title: found.r.title,
+    status: found.r.status,
+    device: found.job?.device || null,
+    steps: buildSteps(req.config, found.r, found.job),
+    messages: found.msgs.map((x) => ({ label: EVENT_LABEL[x.event] || x.event, message: x.message, at: x.created_at })),
   });
 }));
 
