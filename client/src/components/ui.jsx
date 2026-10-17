@@ -3,9 +3,71 @@ import { X, Loader2, Inbox, AlertTriangle, CheckCircle2, Info } from '../lib/ico
 import { useToasts } from '../lib/store.js';
 import { human, statusTone } from '../lib/format.js';
 
-export const Logo = ({ height = 38, className = '' }) => (
-  <img src="/electrolyte-logo.png" alt="Electrolyte" style={{ height }} className={`block select-none ${className}`} draggable={false} />
-);
+export const Logo = ({ height = 38, className = '' }) => {
+  const width = Math.round(height * (380 / 96));
+  return (
+    <svg
+      viewBox="0 0 380 96"
+      width={width}
+      height={height}
+      className={`block select-none ${className}`}
+      draggable={false}
+      role="img"
+      aria-label="OpsHub"
+      style={{ height, width: 'auto' }}
+    >
+      <defs>
+        <radialGradient id="hubGlow" cx="54" cy="48" r="48" fx="54" fy="48" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.3" />
+          <stop offset="60%" stopColor="#1D4FB5" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#0A0F18" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="topGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#38BDF8" />
+          <stop offset="100%" stopColor="#0284C7" />
+        </linearGradient>
+        <linearGradient id="leftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFDD0A" />
+          <stop offset="100%" stopColor="#F59E0B" />
+        </linearGradient>
+        <linearGradient id="rightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#818CF8" />
+          <stop offset="100%" stopColor="#1D4FB5" />
+        </linearGradient>
+        <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFDD0A" />
+          <stop offset="100%" stopColor="#FACC15" />
+        </linearGradient>
+      </defs>
+
+      <rect width="380" height="96" rx="20" fill="#0A0F18" stroke="#1E293B" strokeWidth="1.5" />
+      <circle cx="54" cy="48" r="42" fill="url(#hubGlow)" />
+      <ellipse cx="54" cy="48" rx="36" ry="16" fill="none" stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="4 6" opacity="0.65" transform="rotate(-18 54 48)" />
+      <circle cx="20" cy="54" r="2.5" fill="#38BDF8" />
+      <circle cx="88" cy="42" r="2.5" fill="#FFDD0A" />
+
+      <polygon points="54,20 78,33.5 54,46 30,33.5" fill="url(#topGrad)" stroke="#0A0F18" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="54" cy="33.5" r="2" fill="#FFFFFF" opacity="0.9" />
+
+      <polygon points="28.5,36 52.5,48.5 52.5,75 28.5,62.5" fill="url(#leftGrad)" stroke="#0A0F18" strokeWidth="1.5" strokeLinejoin="round" />
+      <polyline points="36,44 44,48 44,66" fill="none" stroke="#0A0F18" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+      <circle cx="36" cy="44" r="1.5" fill="#0A0F18" opacity="0.5" />
+
+      <polygon points="55.5,48.5 79.5,36 79.5,62.5 55.5,75" fill="url(#rightGrad)" stroke="#0A0F18" strokeWidth="1.5" strokeLinejoin="round" />
+      <polyline points="72,44 64,48 64,66" fill="none" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+      <circle cx="72" cy="44" r="1.5" fill="#FFFFFF" opacity="0.6" />
+
+      <circle cx="54" cy="48" r="3.5" fill="#FFFFFF" />
+      <circle cx="54" cy="48" r="6" fill="none" stroke="#38BDF8" strokeWidth="1" opacity="0.8" />
+
+      <text x="110" y="56" fill="#FFFFFF" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontSize: '38px', fontWeight: 800, letterSpacing: '2px' }}>OPS</text>
+      <rect x="194" y="26" width="84" height="36" rx="8" fill="url(#badgeGrad)" />
+      <text x="236" y="52" textAnchor="middle" fill="#0A0F18" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontSize: '23px', fontWeight: 900, letterSpacing: '1.5px' }}>HUB</text>
+      <circle cx="112" cy="74" r="2.5" fill="#10B981" />
+      <text x="120" y="77" fill="#94A3B8" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', fontWeight: 600, letterSpacing: '2.5px' }}>OPERATIONS PLATFORM</text>
+    </svg>
+  );
+};
 
 export function useAsync(fn, deps = []) {
   const [state, set] = useState({ data: null, loading: true, error: null });

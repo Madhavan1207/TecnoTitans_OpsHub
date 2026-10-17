@@ -111,13 +111,14 @@ export const MODULES = [
     output: { type: 'request', label: 'Request' }, resource: 'requests',
     page: { path: 'requests', title: 'Requests', icon: 'FilePlus2' },
     fields: REQUEST_FIELDS,
-    defaults: { numberPrefix: 'REQ', publicIntake: false, notifyCustomer: false, phoneField: 'customer_phone' },
+    defaults: { numberPrefix: 'REQ', publicIntake: false, notifyCustomer: false, phoneField: 'customer_phone', emailField: 'customer_email' },
     actions: { list: 'member', listAll: 'manager', get: 'member', create: 'member', update: 'member', cancel: 'member' },
     settings: [
       { key: 'numberPrefix', label: 'Number prefix', type: 'text' },
       { key: 'publicIntake', label: 'Allow public intake form (no login)', type: 'toggle', help: 'Shows a public form at /s/<site>/submit' },
       { key: 'notifyCustomer', label: 'Send SMS updates to the customer', type: 'toggle', help: 'Texts the customer at every step: received, approved, repair stages, handed back.' },
       { key: 'phoneField', label: 'Phone field key (for SMS)', type: 'text', help: 'The field that holds the customer mobile number. It should be a Phone field.' },
+      { key: 'emailField', label: 'Email field key (for Resend email)', type: 'text', help: 'The field that holds the customer email address for repair completion notifications.' },
     ],
   }),
   M({

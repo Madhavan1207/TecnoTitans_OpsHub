@@ -151,7 +151,21 @@ function JobDrawer({ id, onClose, onChanged }) {
   const [part, setPart] = useState({ item: '', qty: 1 });
   const [labour, setLabour] = useState(null);
   const [note, setNote] = useState('');
-  const act = async (fn, msg) => { try { await fn(); toast.ok(msg); reload(); onChanged(); } catch (e) { toast.bad(errMsg(e)); } };
+  const [busy, setBusy] = useState(false);
+  const act = async (fn, msg) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fn();
+      toast.ok(msg);
+      reload();
+      onChanged?.();
+    } catch (e) {
+      toast.bad(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const closed = j?.status === 'returned';
   return (
     <Drawer title={j ? `${j.label} - ${j.device}` : 'Repair job'} onClose={onClose} width={560}>
@@ -168,7 +182,7 @@ function JobDrawer({ id, onClose, onChanged }) {
           {!closed && site.can('pcb_repair', 'update') && (
             <div className="card-flat panel-pad flex flex-col gap-3">
               <div className="label !mb-0">Move to status</div>
-              <div className="flex flex-wrap gap-2">{statuses.map((s) => <button key={s} className={`btn btn-sm ${j.status === s ? 'btn-primary' : ''}`} disabled={j.status === s} onClick={() => act(() => site.api.post(`/repairs/${id}/status`, { status: s, note: note || undefined }), `Moved to ${human(s)}`)}>{human(s)}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{statuses.map((s) => <button key={s} className={`btn btn-sm ${j.status === s ? 'btn-primary' : ''}`} disabled={busy || j.status === s} onClick={() => act(() => site.api.post(`/repairs/${id}/status`, { status: s, note: note || undefined }), `Moved to ${human(s)}`)}>{human(s)}</button>)}</div>
               <input className="input" placeholder="Optional note for the log" value={note} onChange={(e) => setNote(e.target.value)} />
               <div className="flex gap-2 items-end"><div className="flex-1"><label className="label">Labour cost</label><input className="input" type="number" min="0" value={labour ?? j.labour_cost} onChange={(e) => setLabour(e.target.value)} /></div><button className="btn btn-sm" onClick={() => act(() => site.api.put(`/repairs/${id}`, { labour_cost: Number(labour) }), 'Labour updated')}>Update</button></div>
             </div>)}

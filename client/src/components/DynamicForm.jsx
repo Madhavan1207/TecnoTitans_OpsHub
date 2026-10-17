@@ -43,6 +43,7 @@ function Input({ f, value, onChange, error, options }) {
   );
   if (f.type === 'number' || f.type === 'currency') return <input {...common} type="number" inputMode="decimal" step="any" min={f.min} max={f.max} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} />;
   if (f.type === 'phone') return <input {...common} type="tel" inputMode="tel" autoComplete="tel" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder || 'e.g. 98200 12345'} />;
+  if (f.type === 'email') return <input {...common} type="email" inputMode="email" autoComplete="email" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder || 'customer@example.com'} />;
   if (f.type === 'date') return <input {...common} type="date" value={value ? String(value).slice(0, 10) : ''} onChange={(e) => onChange(e.target.value)} />;
   return <input {...common} type="text" value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} />;
 }

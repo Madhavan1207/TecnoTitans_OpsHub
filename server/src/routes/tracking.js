@@ -5,7 +5,8 @@ import { fieldsFor, serialize, validateInput, withCalculated } from '../entities
 import { hasModule, moduleConfig } from '../../../shared/registry.js';
 import { changeStock } from './inventory.js';
 import { assignmentStatus, reqLabel } from './workflow.js';
-import { queueSms, flush, statusText } from '../notify.js';
+import { queueSms, flush, statusText, trackLink } from '../notify.js';
+import { sendRepairCompleteEmail } from '../email.js';
 
 const pad = (p, n) => `${p}-${String(n).padStart(4, '0')}`;
 
@@ -145,6 +146,9 @@ repairsRouter.post('/:id/status', guard('pcb_repair', 'update'), h(async (req, r
   const to = String(req.body?.status || '');
   if (!list.includes(to)) throw new HttpError(422, `Status must be one of: ${list.join(', ')}.`, 'validation_failed');
   const note = req.body?.note ? String(req.body.note).slice(0, 500) : null;
+
+  let emailPayload = null;
+
   const row = await withSite(req.site.id, async (t, repo) => {
     const cur = await repo.get('repair_jobs', req.params.id, { forUpdate: true });
     if (!cur) throw new HttpError(404, 'Repair job not found.');
@@ -155,13 +159,94 @@ repairsRouter.post('/:id/status', guard('pcb_repair', 'update'), h(async (req, r
     await repo.insert('repair_logs', { repair_id: cur.id, entry: note || `Status changed to ${to.replace(/_/g, ' ')}`, from_status: cur.status, to_status: to, actor_id: req.user.id });
     if (cur.request_id) await repo.update('requests', cur.request_id, { status: done ? 'fulfilled' : 'assigned', updated_at: new Date().toISOString() });
     await repo.audit(req.user.id, 'status', 'repair', cur.id, { from: cur.status, to });
+
+    let rq = null;
+    let customerEmail = null;
+    let customerName = null;
+    let reqLabelStr = pad('JOB', cur.job_no);
+    let reqTitle = cur.fault || '';
+
     if (cur.request_id) {
-      const rq = await repo.get('requests', cur.request_id);
-      if (rq) await queueSms(repo, req.config, rq, done ? 'repair_done' : 'repair_status', { status_text: statusText(to), job: pad('JOB', cur.job_no), actorId: req.user.id });
+      rq = await repo.get('requests', cur.request_id);
+      if (rq) {
+        reqTitle = rq.title || reqTitle;
+        const cfg = hasModule(req.config, 'request') ? moduleConfig(req.config, 'request') : null;
+        reqLabelStr = cfg ? reqLabel(cfg, rq) : reqLabelStr;
+        customerName = String(rq.data?.customer_name || rq.data?.name || '').trim() || null;
+        customerEmail = rq.data?.customer_email || rq.data?.email || rq.data?.contact_email || null;
+        if (!customerEmail && rq.requester_id) {
+          try {
+            const u = await t.one('SELECT email, name FROM users WHERE id = $1', [rq.requester_id]);
+            if (u) {
+              customerEmail = u.email;
+              if (!customerName) customerName = u.name;
+            }
+          } catch {}
+        }
+      }
     }
+
+    if (!customerEmail) {
+      customerEmail = cur.data?.customer_email || cur.data?.email || null;
+    }
+    if (!customerName) {
+      customerName = String(cur.data?.customer_name || 'Customer').trim();
+    }
+
+    if (done && customerEmail) {
+      const trackingUrl = trackLink(req.config, reqLabelStr);
+      const totalCost = cur.data?.grand_total || cur.data?.total_cost || (Number(cur.labour_cost || 0) + Number(cur.parts_cost || 0)) || null;
+      const siteName = req.config.name || req.site.name || 'Service Centre';
+      const device = cur.device || rq?.data?.device_type || rq?.data?.device || rq?.title || 'Your device';
+
+      emailPayload = {
+        to: customerEmail,
+        customerName,
+        device,
+        ref: reqLabelStr,
+        job: pad('JOB', cur.job_no),
+        title: reqTitle,
+        siteName,
+        trackingUrl,
+        totalCost,
+        requestId: cur.request_id || null,
+      };
+    }
+
     return upd;
   });
-  await flush(req.site.id);
+
+  // DB transaction is committed! Now send customer notification email without blocking DB
+  if (emailPayload) {
+    try {
+      const emailRes = await sendRepairCompleteEmail(emailPayload);
+      console.log(`[Resend:Email] Repair completion email sent to ${emailPayload.to} (provider ref: ${emailRes?.id})`);
+
+      if (emailPayload.requestId) {
+        try {
+          await withSite(req.site.id, async (_t, repo) => {
+            await repo.insert('notifications', {
+              request_id: emailPayload.requestId,
+              event: 'repair_done',
+              channel: 'email',
+              to_phone: emailPayload.to,
+              message: `Repair completed. Collection email sent to ${emailPayload.to}`,
+              status: 'sent',
+              provider: emailRes?.provider || 'resend',
+              provider_ref: emailRes?.id || null,
+              created_by: req.user.id,
+              sent_at: new Date().toISOString(),
+            });
+          });
+        } catch {
+          // notifications table may not exist; safe to ignore
+        }
+      }
+    } catch (emailErr) {
+      console.warn(`[Resend:Email] Could not send repair completion email to ${emailPayload.to}:`, emailErr.message);
+    }
+  }
+
   res.json(shapeRepair(req, fields, row));
 }));
 

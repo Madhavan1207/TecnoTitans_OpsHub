@@ -52,6 +52,12 @@ function coerce(f, v) {
       if (!/^\+?[\d\s\-().]{7,22}$/.test(raw) || digits.length < 10 || digits.length > 15) return { error: `${f.label} must be a valid mobile number (10 digits, or with country code)` };
       return { value: (raw.startsWith('+') ? '+' : '') + digits };
     }
+    case 'email': {
+      const s = String(v).trim();
+      if (!s) return { value: null };
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return { error: `${f.label} must be a valid email address` };
+      return { value: s.toLowerCase() };
+    }
     case 'ref': {
       const n = Number(v);
       if (!Number.isInteger(n) || n <= 0) return { error: `${f.label} is not a valid selection` };

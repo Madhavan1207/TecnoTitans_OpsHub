@@ -6,7 +6,7 @@ import { addModule, removeModule, canAddModule, connect, isValidConnection, vali
 import { PRESETS, applyPreset } from '@shared/presets.js';
 import { http, errMsg, errDetails } from '../lib/api.js';
 import { toast } from '../lib/store.js';
-import { Chip, Modal, Spinner, Tabs, useAsync, ErrorBox } from '../components/ui.jsx';
+import { Chip, Modal, Spinner, Tabs, useAsync, ErrorBox, Logo } from '../components/ui.jsx';
 import { Icon } from '../lib/icons.jsx';
 import { PanelLeft, PanelRight, ArrowLeft, Eye, Rocket, Layers, History, CheckCircle2, AlertTriangle, Lock, Plus, Cloud, Loader2 } from '../lib/icons.jsx';
 import ModuleNode from './ModuleNode.jsx';
@@ -129,7 +129,7 @@ function Canvas({ slug, init, status, refreshStatus }) {
       <header style={{ background: '#0D1621' }} className="text-white">
         <div className="px-4 py-2 flex items-center gap-3 flex-wrap">
           <button className="btn btn-sm btn-icon" style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.5)', boxShadow: 'none' }} onClick={async () => { if (save === 'dirty') await flush(); nav('/'); }}><ArrowLeft size={16} /></button>
-          <img src="/electrolyte-logo.png" alt="Electrolyte" style={{ height: 34 }} />
+          <Logo height={34} />
           <div className="leading-tight"><div className="text-[10px] font-bold tracking-widest opacity-60">BUILDER</div><div className="font-heading text-xl" style={{ color: '#FFDD0A' }}>{config.name}</div></div>
           <Chip tone={saveChip[0]}>{save === 'saving' ? <Loader2 size={11} className="animate-spin" /> : <Cloud size={11} />}{saveChip[1]}</Chip>
           <Chip tone={status?.live_version ? 'info' : 'mute'}>{status?.live_version ? `Live: v${status.live_version}` : 'Never published'}</Chip>

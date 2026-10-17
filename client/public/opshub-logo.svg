@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 96" width="380" height="96">
+  <defs>
+    <!-- Background subtle ambient glow -->
+    <radialGradient id="hubGlow" cx="54" cy="48" r="48" fx="54" fy="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.3" />
+      <stop offset="60%" stop-color="#1D4FB5" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#0A0F18" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Isometric Face Gradients -->
+    <linearGradient id="topGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+
+    <linearGradient id="leftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFDD0A" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+
+    <linearGradient id="rightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#1D4FB5" />
+    </linearGradient>
+
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFDD0A" />
+      <stop offset="100%" stop-color="#FACC15" />
+    </linearGradient>
+  </defs>
+
+  <!-- Container Plate with subtle tech border -->
+  <rect width="380" height="96" rx="20" fill="#0A0F18" stroke="#1E293B" stroke-width="1.5" />
+
+  <!-- Ambient Glow Behind Icon -->
+  <circle cx="54" cy="48" r="42" fill="url(#hubGlow)" />
+
+  <!-- Orbital Data Ring -->
+  <ellipse cx="54" cy="48" rx="36" ry="16" fill="none" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.65" transform="rotate(-18 54 48)" />
+
+  <!-- Orbiting Satellite Nodes -->
+  <circle cx="20" cy="54" r="2.5" fill="#38BDF8" />
+  <circle cx="88" cy="42" r="2.5" fill="#FFDD0A" />
+
+  <!-- 3D Isometric Modular Ops Cube -->
+  <!-- Top Face (Triggers & Ingestion) -->
+  <polygon points="54,20 78,33.5 54,46 30,33.5" fill="url(#topGrad)" stroke="#0A0F18" stroke-width="1.5" stroke-linejoin="round" />
+  <circle cx="54" cy="33.5" r="2" fill="#FFFFFF" opacity="0.9" />
+
+  <!-- Left Face (Workflows & Logic) -->
+  <polygon points="28.5,36 52.5,48.5 52.5,75 28.5,62.5" fill="url(#leftGrad)" stroke="#0A0F18" stroke-width="1.5" stroke-linejoin="round" />
+  <!-- Circuit trace on left face -->
+  <polyline points="36,44 44,48 44,66" fill="none" stroke="#0A0F18" stroke-width="1.5" stroke-linecap="round" opacity="0.4" />
+  <circle cx="36" cy="44" r="1.5" fill="#0A0F18" opacity="0.5" />
+
+  <!-- Right Face (Integrations & Output) -->
+  <polygon points="55.5,48.5 79.5,36 79.5,62.5 55.5,75" fill="url(#rightGrad)" stroke="#0A0F18" stroke-width="1.5" stroke-linejoin="round" />
+  <!-- Circuit trace on right face -->
+  <polyline points="72,44 64,48 64,66" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.4" />
+  <circle cx="72" cy="44" r="1.5" fill="#FFFFFF" opacity="0.6" />
+
+  <!-- Center Core Node -->
+  <circle cx="54" cy="48" r="3.5" fill="#FFFFFF" />
+  <circle cx="54" cy="48" r="6" fill="none" stroke="#38BDF8" stroke-width="1" opacity="0.8" />
+
+  <!-- Brand Typography -->
+  <!-- OPS -->
+  <text x="110" y="56" font-family="'Space Grotesk', system-ui, -apple-system, sans-serif" font-size="38" font-weight="800" fill="#FFFFFF" letter-spacing="2">OPS</text>
+
+  <!-- HUB Badge -->
+  <rect x="194" y="26" width="84" height="36" rx="8" fill="url(#badgeGrad)" />
+  <text x="236" y="52" text-anchor="middle" font-family="'Space Grotesk', system-ui, -apple-system, sans-serif" font-size="23" font-weight="900" fill="#0A0F18" letter-spacing="1.5">HUB</text>
+
+  <!-- Status / Tagline -->
+  <circle cx="112" cy="74" r="2.5" fill="#10B981" />
+  <text x="120" y="77" font-family="'JetBrains Mono', monospace" font-size="9.5" font-weight="600" fill="#94A3B8" letter-spacing="2.5">OPERATIONS PLATFORM</text>
+</svg>

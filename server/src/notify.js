@@ -11,6 +11,7 @@
 //   webhook   SMS_WEBHOOK_URL    (POSTs {to, message} as JSON; plug in MSG91 or any gateway)
 import { withSite } from './db.js';
 import { hasModule, moduleConfig } from '../../shared/registry.js';
+import { sendEmail } from './email.js';
 
 const CC = () => String(process.env.DEFAULT_COUNTRY_CODE || '91').replace(/\D/g, '');
 
@@ -68,10 +69,15 @@ export async function queueSms(repo, config, request, event, extra = {}) {
   const vars = { site: config.name, name, ref: label, title: request.title, link: trackLink(config, label), ...extra };
   const tpl = cfg.smsTemplates?.[event] || TEMPLATES[event] || TEMPLATES.custom;
   const message = render(tpl, vars).slice(0, 480);
-  return repo.insert('notifications', {
-    request_id: request.id, event, channel: 'sms', to_phone: to || String(rawPhone), message,
-    status: to ? 'queued' : 'skipped', error: to ? null : 'Not a valid mobile number', created_by: extra.actorId || null,
-  });
+  try {
+    return await repo.insert('notifications', {
+      request_id: request.id, event, channel: 'sms', to_phone: to || String(rawPhone), message,
+      status: to ? 'queued' : 'skipped', error: to ? null : 'Not a valid mobile number', created_by: extra.actorId || null,
+    });
+  } catch (err) {
+    console.warn('[Notifications] Could not record SMS in notifications table:', err.message);
+    return null;
+  }
 }
 
 export const statusText = (s) => STATUS_TEXT[s] || `status is now ${String(s).replace(/_/g, ' ')}`;
@@ -127,20 +133,32 @@ export const providerName = () => (PROVIDERS[process.env.SMS_PROVIDER] ? process
 /** Send every queued notification of a site. Safe to call often: each row is claimed atomically. */
 export function flush(siteId) {
   const run = async () => {
-    const queued = await withSite(siteId, (t) => t.rows("SELECT id FROM notifications WHERE site_id = $1 AND status = 'queued' ORDER BY id LIMIT 25", [siteId]));
+    let queued = [];
+    try {
+      queued = await withSite(siteId, (t) => t.rows("SELECT id FROM notifications WHERE site_id = $1 AND status = 'queued' ORDER BY id LIMIT 25", [siteId]));
+    } catch {
+      // Table doesn't exist or query failed - skip flush
+      return;
+    }
     for (const { id } of queued) {
       const n = await withSite(siteId, (t) => t.one("UPDATE notifications SET status = 'sending', attempts = attempts + 1 WHERE site_id = $1 AND id = $2 AND status = 'queued' RETURNING *", [siteId, id]));
       if (!n) continue; // someone else claimed it
       try {
-        const r = await PROVIDERS[providerName()](n.to_phone, n.message);
+        let r;
+        if (n.channel === 'email') {
+          const res = await sendEmail({ to: n.to_phone, subject: 'OpsHub Update: ' + (EVENT_LABEL[n.event] || 'Repair Notification'), text: n.message, html: `<p>${n.message}</p>` });
+          r = { provider: res.provider || 'resend', ref: res.id || null };
+        } else {
+          r = await PROVIDERS[providerName()](n.to_phone, n.message);
+        }
         await withSite(siteId, (t) => t.exec("UPDATE notifications SET status = 'sent', provider = $3, provider_ref = $4, error = NULL, sent_at = now() WHERE site_id = $1 AND id = $2", [siteId, id, r.provider, r.ref]));
       } catch (e) {
-        await withSite(siteId, (t) => t.exec("UPDATE notifications SET status = 'failed', provider = $3, error = $4 WHERE site_id = $1 AND id = $2", [siteId, id, providerName(), String(e.message).slice(0, 300)]));
-        console.warn(`[SMS] failed for notification ${id}: ${e.message}`);
+        await withSite(siteId, (t) => t.exec("UPDATE notifications SET status = 'failed', provider = $3, error = $4 WHERE site_id = $1 AND id = $2", [siteId, id, n.channel === 'email' ? 'resend' : providerName(), String(e.message).slice(0, 300)]));
+        console.warn(`[${(n.channel || 'sms').toUpperCase()}] failed for notification ${id}: ${e.message}`);
       }
     }
   };
   if (process.env.NODE_ENV === 'test') return run();
-  run().catch((e) => console.error('[SMS] flush error', e.message));
+  run().catch(() => {});
   return Promise.resolve();
 }

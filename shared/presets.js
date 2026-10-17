@@ -80,6 +80,7 @@ const serviceCentre = () => buildFromModules(
         F('notes', 'Notes', 'textarea', { core: true }),
         F('customer_name', 'Customer name', 'text', { required: true }),
         F('customer_phone', 'Mobile number', 'phone', { required: true, help: 'We text updates to this number' }),
+        F('customer_email', 'Customer email', 'email', { placeholder: 'customer@example.com', help: 'We email you when your device is ready for collection' }),
         F('device_type', 'Device type', 'select', { options: ['Laptop', 'Phone', 'TV', 'Mainboard', 'Other'] }),
         F('warranty', 'In warranty?', 'boolean'),
         F('purchase_date', 'Purchase date', 'date'),

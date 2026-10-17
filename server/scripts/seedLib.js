@@ -119,7 +119,8 @@ export async function seedDemo({ quiet = false } = {}) {
   await withSite(svc.id, async (t, repo) => {
     const mk = async (title, customer, device_type, priority, status, days, extra = {}) => {
       const no = await repo.nextNo('request');
-      const data = { customer_name: customer, customer_phone: '98200' + String(10000 + no * 137), device_type, warranty: no % 2 === 0, ...extra };
+      const emailUser = customer.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const data = { customer_name: customer, customer_phone: '98200' + String(10000 + no * 137), customer_email: `${emailUser}@example.com`, device_type, warranty: no % 2 === 0, ...extra };
       const r = await repo.insert('requests', { req_no: no, title, qty: 1, priority, notes: null, status, requester_id: tech, data: { ...data, ...withCalculated(reqFields, { qty: 1, ...data }) }, created_at: ago(days), updated_at: ago(days) });
       const ap = await repo.insert('approvals', { request_id: r.id, level: 1, role: 'manager', label: 'Estimate approval', status: status === 'pending' ? 'pending' : status === 'rejected' ? 'rejected' : 'approved', decided_by: status === 'pending' ? null : manager, comment: status === 'rejected' ? 'Beyond economical repair' : null, decided_at: status === 'pending' ? null : ago(days, -2) });
       void ap; return r;
